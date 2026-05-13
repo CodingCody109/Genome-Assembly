@@ -63,40 +63,107 @@ def deBruijn(kmers):
     order = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     return dict(sorted(adjList.items(), key=lambda x: [order[c] for c in x[0]]))
 
+def shift(n, list):
+    return list[n:] + list[:n]
+
+# EulerianCycle
+# Input: An adjacency list of a directed graph that contains an Eulerian cycle.
+# Output: An Eulerian cycle in this graph, in the form of a list of nodes
+def eulerianCycle(adjList):
+    keys = list(adjList.keys())
+    trackList = adjList.copy()
+    currentNode = keys[randint(0, len(keys)-1)]
+    currentcycle = []
+    thiscycle = []
+
+    while any(trackList.values()):
+        currentcycle = thiscycle
+
+        while trackList[currentNode] != []:
+            if currentcycle == []:
+                currentcycle.append(currentNode)
+            previousNode = currentNode
+            choice = randint(0, len(trackList[currentNode]) - 1)
+            currentNode = trackList[currentNode][choice]
+            currentcycle.append(currentNode)
+            trackList[previousNode].remove(trackList[previousNode][choice])
+        
+        thiscycle = currentcycle
+    
+        for key in thiscycle:
+            if trackList[key] != []:
+                currentNode = key
+                n = thiscycle.index(currentNode)
+                thiscycle = shift(n, thiscycle[:-1]) + [currentNode]
+                break
+        
+        
+        
+    
+    return thiscycle
+
+
+
 def eulerianPath(adjList):
     keys = list(adjList.keys())
     trackList = adjList.copy()
-    startNode = keys[randint(0, len(keys)-1)]
-    currentNode = startNode
-    path = []
+    endNode = -1
 
-    while trackList != {}:
-        while trackList[startNode] != []:
-            currentNode = trackList[currentNode][0]
-            trackList[currentNode].remove(trackList[currentNode][0])
-    
-        while trackList[startNode] == []:
-            for key in trackList:
-                if trackList[key] != []:
-                    startNode = key
-                    break
-            break
-    
+    for key in keys:
+        indegree = 0
+        for otherKey in keys:
+            if key in trackList[otherKey]:
+                indegree += 1
+        outdegree = len(trackList[key])
+        if outdegree - indegree == 1:
+            startNode = key
+        if indegree - outdegree == 1:
+            endNode = key
+    if endNode != -1:
+        trackList[endNode].append(startNode)
+
+    for key in keys:
+        for item in trackList[key]:
+            if item not in trackList:
+                endNode = item
+                trackList[item] = [startNode]
+
     currentNode = startNode
-    while trackList != {}:
+
+    currentcycle = []
+    thiscycle = []
+
+    while any(trackList.values()):
+        currentcycle = thiscycle
+
         while trackList[currentNode] != []:
-            path.append(currentNode)
-            currentNode = trackList[currentNode][0]
-            trackList[currentNode].remove(trackList[currentNode][0])
+            if currentcycle == []:
+                currentcycle.append(currentNode)
+            previousNode = currentNode
+            choice = randint(0, len(trackList[currentNode]) - 1)
+            currentNode = trackList[currentNode][choice]
+            currentcycle.append(currentNode)
+            trackList[previousNode].remove(trackList[previousNode][choice])
+        
+        thiscycle = currentcycle 
     
-        while trackList[currentNode] == []:
-            for key in trackList:
-                if trackList[key] != []:
-                    currentNode = key
-                    break
-            break
+        for key in thiscycle:
+            if trackList[key] != []:
+                currentNode = key
+                n = thiscycle.index(currentNode)
+                thiscycle = shift(n, thiscycle[:-1]) + [currentNode]
+                break
+
+    thiscycle.pop()
+    thiscycle = shift(thiscycle.index(startNode), thiscycle)
     
-    return path
+    return thiscycle
+
+        
+        
+        
+    
+    
         
 
     
