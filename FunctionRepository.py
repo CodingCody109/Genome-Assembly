@@ -1,3 +1,4 @@
+import copy
 # get_kmers
 # Input: A string Genome and an integer k.
 # Output: The set of all k-mers in Genome.
@@ -60,8 +61,9 @@ def deBruijn(kmers):
             adjList[prefix] = []
         adjList[prefix].append(suffix)  
     
-    order = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-    return dict(sorted(adjList.items(), key=lambda x: [order[c] for c in x[0]]))
+    return adjList
+    #order = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    #return dict(sorted(adjList.items(), key=lambda x: [order[c] for c in x[0]]))
 
 def shift(n, list):
     return list[n:] + list[:n]
@@ -103,10 +105,12 @@ def eulerianCycle(adjList):
     return thiscycle
 
 
-
+# EulerianPath
+# Input: An adjacency list of a directed graph that contains an Eulerian path.
+# Output: An Eulerian path in this graph, in the form of a list of nodes
 def eulerianPath(adjList):
     keys = list(adjList.keys())
-    trackList = adjList.copy()
+    trackList = copy.deepcopy(adjList)
     endNode = -1
 
     for key in keys:
@@ -159,11 +163,113 @@ def eulerianPath(adjList):
     
     return thiscycle
 
-        
-        
-        
-    
-    
-        
+# StringReconstruction
+# Input: A collection of k-mers Patterns.
+# Output: A string Text with k-mer composition equal to Patterns. 
+def StringReconstruction(kmers):
+    adjList = deBruijn(kmers)  
+    path = eulerianPath(adjList)
+    return PathToGenome(path) 
 
+def circularStringReconstruction(kmers):
+    adjList = deBruijn(kmers)  
+    cycle = eulerianCycle(adjList)
+    # remove the last node since it is the same as the first node
+    for i in range(len(kmers[0]) - 1):
+        cycle.pop()
+    return PathToGenome(cycle)
+
+def kUniversalCircularString(k):
+    kmers = []
+    for i in range(2**k):
+        kmers.append(to_binary(i).zfill(k))
+    return circularStringReconstruction(kmers)
     
+
+def to_binary(k):
+    return bin(k)[2:]
+
+# From here on, the genome assembly method will be focused on generating read-pairs
+# A k,d-mer is a pair of k-mers separated by a gap of d nucleotides.
+def GeneratekdMers(Genome, k, d):
+    kdmers = []
+    for i in range(len(Genome)-k-d-k+1):
+        kdmers.append((Genome[i:i+k] + "|" + Genome[i+k+d:i+k+d+k]))
+    return sorted(kdmers)
+
+def deBruijnFromReadPairs(k, kdmers):
+    adjList = {}
+
+    for kdmer in kdmers:
+        prefix = kdmer[0:k-1] + "|" + kdmer[k+1:len(kdmer)-1]
+        suffix = kdmer[1:k] + "|" + kdmer[k+2:len(kdmer)]
+    
+        if prefix not in adjList:
+            adjList[prefix] = []
+        adjList[prefix].append(suffix)
+    
+    return adjList
+
+# Because of the need to have the same base in a column, not all
+# eulerian paths will work for genome assembly. 
+def nonEmpty(list):
+    for item in list:
+        if item == " ":
+            return False
+    return True
+
+def ListToString(list):
+    string = ""
+    for item in list:
+        string += item
+    return string
+
+def GraphtoGenomeforkdMers(k, d, graph):
+    potentialPaths = []
+    i = 0
+    while i < 100:
+        Path = eulerianCycle(graph)
+        if Path not in potentialPaths:
+            potentialPaths.append(Path)
+        i += 1
+    print(potentialPaths)
+
+    for path in potentialPaths:
+        Genome = []
+        for i in range (len(path)-2+k+d+k):
+            Genome.append(" ")
+        validPath = True
+        pos = 0
+        pairCount = 0
+        while pairCount < len(path):
+            #Check
+            if pairCount > 0:
+                for prefixpos1 in range(1, k - 1):
+                    if path[pairCount][prefixpos1 - 1] != path[pairCount - 1][prefixpos1]:
+                        validPath = False
+                        break
+                    suffixpos1 = prefixpos1 + k - 1 + 1# position of suffix in path[pairCount]（k-1mer | k-1mer）
+                    if path[pairCount][suffixpos1 - 1] != path[pairCount - 1][suffixpos1]:
+                        validPath = False                
+                        break
+                if not validPath:
+                    break
+            if not validPath:
+                break
+            #Extend
+            for prefixpos in range(k - 1):
+                Genome[pos + prefixpos] = path[pairCount][prefixpos]
+
+                suffixpos = prefixpos + k + d # position of suffix in Genome (kmer _ _ _ _ (d _'s) kmer)
+                Genome[pos + suffixpos] = path[pairCount][prefixpos + k]
+            
+            pos = pos + 1
+            pairCount = pairCount + 1
+
+        if not validPath:
+            continue
+        break
+
+    return ListToString(Genome)
+                
+        
