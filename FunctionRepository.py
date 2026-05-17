@@ -73,7 +73,7 @@ def shift(n, list):
 # Output: An Eulerian cycle in this graph, in the form of a list of nodes
 def eulerianCycle(adjList):
     keys = list(adjList.keys())
-    trackList = adjList.copy()
+    trackList = copy.deepcopy(adjList)
     currentNode = keys[randint(0, len(keys)-1)]
     currentcycle = []
     thiscycle = []
@@ -112,7 +112,7 @@ def eulerianPath(adjList):
     keys = list(adjList.keys())
     trackList = copy.deepcopy(adjList)
     endNode = -1
-
+    startNode = -1
     for key in keys:
         indegree = 0
         for otherKey in keys:
@@ -123,6 +123,8 @@ def eulerianPath(adjList):
             startNode = key
         if indegree - outdegree == 1:
             endNode = key
+    if startNode == -1:
+        return False
     if endNode != -1:
         trackList[endNode].append(startNode)
 
@@ -212,27 +214,40 @@ def deBruijnFromReadPairs(k, kdmers):
 
 # Because of the need to have the same base in a column, not all
 # eulerian paths will work for genome assembly. 
-def nonEmpty(list):
-    for item in list:
-        if item == " ":
-            return False
-    return True
-
 def ListToString(list):
     string = ""
     for item in list:
         string += item
     return string
 
+# GraphtoGenomeforkdMers
+# Input: An integer k, an integer d, and a graph in the form of adjacency list
+# Output: A string Text spelled by a path in this graph, where each node in the path is a k,d-mer.
 def GraphtoGenomeforkdMers(k, d, graph):
     potentialPaths = []
     i = 0
+
+    # Creating all the potential paths since not all eulerian paths 
+    # will work for genome assembly. This is actualized by repeatedly
+    # generating eulerian paths and cycles and checking if they are valid for genome assembly.
+    # This algorithm could be improved in the future
     while i < 100:
-        Path = eulerianCycle(graph)
+        Path = eulerianPath(graph)
+        if Path == False:
+            Path = eulerianCycle(graph)
         if Path not in potentialPaths:
             potentialPaths.append(Path)
         i += 1
-    print(potentialPaths)
+
+    # For each potential path, first create a list of the same length as the genome
+    # because lists are more mutable. 
+    # Before starting to assemble, check if the path is valid for genome assembly
+    # by checking if the bases in the same column of the path are the same. 
+    # If not, then this path is not valid for genome assembly and I can skip it.
+    # If it is valid, then I can start to assemble the genome by extending the genome one base at a time.
+    # For the circular case and additional checking, I check if the bases are consistent
+    # once the prefix starts to overlap with the suffix. If not, then this path 
+    # is not valid for genome assembly and I can skip it.
 
     for path in potentialPaths:
         Genome = []
@@ -258,11 +273,14 @@ def GraphtoGenomeforkdMers(k, d, graph):
                 break
             #Extend
             for prefixpos in range(k - 1):
+                currentBase = Genome[pos + prefixpos]
                 Genome[pos + prefixpos] = path[pairCount][prefixpos]
-
+                if currentBase != " " and currentBase != Genome[pos + prefixpos]:
+                    validPath = False
+                    break
                 suffixpos = prefixpos + k + d # position of suffix in Genome (kmer _ _ _ _ (d _'s) kmer)
                 Genome[pos + suffixpos] = path[pairCount][prefixpos + k]
-            
+                
             pos = pos + 1
             pairCount = pairCount + 1
 
